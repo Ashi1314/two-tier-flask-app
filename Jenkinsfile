@@ -1,4 +1,3 @@
-@Library("Shared") _
 pipeline{
     
     agent { label "dev"};
@@ -6,16 +5,13 @@ pipeline{
     stages{
         stage("Code Clone"){
             steps{
-               script{
-                   clone("https://github.com/LondheShubham153/two-tier-flask-app.git", "master")
-               }
+               git url: "https://github.com/Ashi1314/two-tier-flask-app.git", branch:"master" 
             }
         }
-        stage("Trivy File System Scan"){
+        
+        stage("Trivy file system scan"){
             steps{
-                script{
-                    trivy_fs()
-                }
+                sh "trivy fs . -o result.json"
             }
         }
         stage("Build"){
@@ -24,6 +20,7 @@ pipeline{
             }
             
         }
+      
         stage("Test"){
             steps{
                 echo "Developer / Tester tests likh ke dega..."
@@ -32,11 +29,18 @@ pipeline{
         }
         stage("Push to Docker Hub"){
             steps{
-                script{
-                    docker_push("dockerHubCreds","two-tier-flask-app")
-                }  
+                withCredentials([usernamePassword(
+                    credentialsId:"dockerHubCreds",
+                    passwordVariable: "dockerHubPass",
+                    usernameVariable: "dockerHubUser"
+                )]){
+
+                 sh "docker login -u ${env.dockerHubUser} -p ${env.dockerHubPass}"
+                 sh "docker image tag two-tier-flask-app ${env.dockerHubUser}/two-tier-flask-app"
+                 sh "docker push ${env.dockerHubUser}/two-tier-flask-app:latest"
+                }
             }
-        }
+        }        
         stage("Deploy"){
             steps{
                 sh "docker compose up -d --build flask-app"
@@ -47,16 +51,16 @@ pipeline{
 post{
         success{
             script{
-                emailext from: 'mentor@trainwithshubham.com',
-                to: 'mentor@trainwithshubham.com',
+                emailext from: 'ashishsam71@gmail.com',
+                to: 'ashishsam71@gmail.com',
                 body: 'Build success for Demo CICD App',
                 subject: 'Build success for Demo CICD App'
             }
         }
         failure{
             script{
-                emailext from: 'mentor@trainwithshubham.com',
-                to: 'mentor@trainwithshubham.com',
+                emailext from: 'ashishsam71@gmail.com',
+                to: 'ashishsam71@gmail.com',
                 body: 'Build Failed for Demo CICD App',
                 subject: 'Build Failed for Demo CICD App'
             }
